@@ -3,7 +3,7 @@ name: Run Mobility Zgz ETL
 on:
   schedule:
     # Ejecuta el pipeline cada 5 minutos (Formato Cron)
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch: # Permite ejecutar el pipeline manualmente desde la web de GitHub
 
 jobs:
@@ -12,13 +12,13 @@ jobs:
 
     steps:
     - name: Checkout repository code
-      uses: actions/actions/checkout@v4
+      uses: actions/checkout@v4 # <-- Corregido aquí
 
     - name: Set up Python
-      uses: actions/actions/setup-python@v5
+      uses: actions/setup-python@v5 # <-- Corregido aquí
       with:
         python-version: '3.12'
-        cache: 'pip' # Optimiza el tiempo de ejecución cacheando las librerías
+        cache: 'pip'
 
     - name: Install dependencies
       run: |
@@ -27,6 +27,5 @@ jobs:
 
     - name: Execute ETL Pipeline
       env:
-        # Inyectamos el secreto de GitHub como variable de entorno para el script
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
       run: python main.py
