@@ -1,54 +1,124 @@
-# Mobility Zaragoza - Bizi ETL
+# 🚲 Mobility Zaragoza — Bizi ETL Pipeline
 
-Este proyecto es un pipeline **ETL (Extract, Transform, Load)** desarrollado en Python que extrae información en tiempo real sobre el estado de las estaciones de bicicletas públicas (Bizi) del Ayuntamiento de Zaragoza, procesa los datos y los almacena en una base de datos (Supabase / PostgreSQL) para su posterior análisis.
+A Python ETL pipeline that ingests real-time data from the **Open Data API of Zaragoza City Council**, processes public bike-sharing station statuses (Bizi), and loads them into a PostgreSQL database using an idempotent upsert strategy.
 
-## 🚀 Arquitectura del Proyecto
+---
 
-El proceso se divide en tres fases principales:
+## 📐 Architecture
 
-1. **Extract (`src/extract.py`)**: Se conecta a la API abierta del Ayuntamiento de Zaragoza para obtener el JSON con el estado actual de todas las estaciones.
-2. **Transform (`src/transform.py`)**: Limpia, normaliza y formatea los datos obtenidos (ej. estacionamientos disponibles, bicicletas libres, coordenadas).
-3. **Load (`src/load.py`)**: Realiza un *upsert* (actualiza si existe, inserta si es nuevo) de los datos en la tabla `bizi_stations` en la base de datos de destino.
+```
+┌─────────────────────┐     ┌──────────────────────┐     ┌─────────────────────┐
+│       EXTRACT        │────▶│      TRANSFORM        │────▶│        LOAD          │
+│                     │     │                      │     │                     │
+│  Zaragoza Open Data │     │  Normalize & clean   │     │  Upsert into        │
+│  REST API (JSON)    │     │  stations payload    │     │  PostgreSQL         │
+│  src/extract.py     │     │  src/transform.py    │     │  src/load.py        │
+└─────────────────────┘     └──────────────────────┘     └─────────────────────┘
+```
 
-## 🛠️ Tecnologías Utilizadas
+Each ETL phase is isolated in its own module, making the pipeline independently testable and maintainable.
 
-- **Python 3.x**
-- **Pandas** (Transformación de datos)
-- **SQLAlchemy / Psycopg** (Conexión a base de datos)
-- **Supabase** (Base de datos PostgreSQL recomendada)
-- **Requests** (Llamadas a la API)
+---
 
-## ⚙️ Configuración y Uso
+## 🛠️ Stack
 
-### 1. Preparar el entorno e instalar dependencias
+| Layer | Technology |
+|---|---|
+| Language | Python 3.x |
+| Transformation | Pandas |
+| DB Connectivity | SQLAlchemy / Psycopg |
+| Data Store | Supabase (PostgreSQL) |
+| HTTP Client | Requests |
+| Config | python-dotenv |
 
-Te recomendamos usar un entorno virtual (como tu entorno `data-engineer` de conda):
+---
+
+## ⚙️ Setup
+
+### 1. Clone the repository
 
 ```bash
-# Activar entorno
-conda activate data-engineer
+git clone https://github.com/e-saldanaf/mobility-zgz.git
+cd mobility-zgz
+```
 
-# Instalar los requerimientos
+### 2. Create and activate a virtual environment
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+```
+
+### 3. Install dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configurar Variables de Entorno
+### 4. Configure environment variables
 
-Asegúrate de tener un archivo llamado `.env` en la raíz del proyecto que contenga la URI de tu base de datos:
+Create a `.env` file in the project root:
 
 ```env
-DATABASE_URL="postgresql://usuario:contraseña@host:puerto/nombre_bd"
+DATABASE_URL="postgresql://user:password@host:port/database"
 ```
 
-### 3. Ejecutar el Pipeline
+> ⚠️ Never commit your `.env` file. It is already listed in `.gitignore`.
 
-Para iniciar el proceso de extracción, transformación y carga, simplemente ejecuta el script principal:
+### 5. Run the pipeline
 
 ```bash
 python main.py
 ```
 
-Si todo funciona correctamente, verás en consola los logs detallando cuántas estaciones se han procesado y confirmando la carga de datos.
+The console will log how many stations were processed and confirm the upsert into the database.
 
-## 📡 Fuente de Datos
-Los datos son extraídos en tiempo real del servicio de Infraestructuras y Urbanismo de la [API de Datos Abiertos del Ayuntamiento de Zaragoza](https://www.zaragoza.es/sede/portal/datos-abiertos/).
+---
+
+## 📁 Project Structure
+
+```
+mobility-zgz/
+│
+├── src/
+│   ├── extract.py       # Connects to Zaragoza Open Data API
+│   ├── transform.py     # Cleans and normalizes the stations payload
+│   └── load.py          # Upserts data into PostgreSQL
+│
+├── query/
+│   └── postgresql/
+│       └── create/
+│           └── bizi_stations/   # DDL scripts for table creation
+│
+├── main.py              # Pipeline entrypoint
+├── requirements.txt
+├── pyproject.toml
+└── .env.example
+```
+
+---
+
+## 🔑 Key Engineering Decisions
+
+**Upsert over insert**
+Guarantees idempotency — safe to run on a schedule (e.g. via cron or Airflow) without duplicating records.
+
+**Modular ETL structure**
+Each phase (Extract, Transform, Load) lives in its own module. You can test, mock or replace any phase independently without touching the others.
+
+**Environment-based configuration**
+Database credentials are loaded from environment variables via `python-dotenv`. No secrets are hardcoded or committed to version control.
+
+---
+
+## 📡 Data Source
+
+Data is extracted in real time from the open infrastructure services of the **Ayuntamiento de Zaragoza**:
+
+[Open Data Portal — Zaragoza City Council](https://www.zaragoza.es/sede/portal/datos-abiertos/)
+
+---
+
+## 📄 License
+
+This project is released under the [Unlicense](LICENSE) — public domain, no restrictions.
