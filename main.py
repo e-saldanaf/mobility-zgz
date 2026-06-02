@@ -2,13 +2,13 @@ import os
 import logging
 import sys
 from dotenv import load_dotenv
+from utils.utils import configurar_logs
 from src.extract import BiziExtractor
 from src.transform import BiziTransformer
 from src.load import BiziLoader
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-
+# Inicializar la configuración
+configurar_logs()
 
 def main():
     load_dotenv()
