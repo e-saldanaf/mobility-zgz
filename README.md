@@ -1,19 +1,19 @@
 # 🚲 Mobility Zaragoza — Bizi ETL Pipeline
 
-A Python ETL pipeline that ingests real-time data from the **Open Data API of Zaragoza City Council**, processes public bike-sharing station statuses (Bizi), and loads them into a PostgreSQL database using an idempotent upsert strategy.
+A Python ETL pipeline that ingests real-time data from the **Open Data API of Zaragoza City Council**, processes public bike-sharing station statuses (Bizi), and loads them into a PostgreSQL database.
 
 ---
 
 ## 📐 Architecture
 
 ```
-┌─────────────────────┐     ┌──────────────────────┐     ┌─────────────────────┐
+┌─────────────────────┐     ┌──────────────────────┐     ┌──────────────┐
 │       EXTRACT        │────▶│      TRANSFORM        │────▶│        LOAD          │
 │                     │     │                      │     │                     │
 │  Zaragoza Open Data │     │  Normalize & clean   │     │  Upsert into        │
 │  REST API (JSON)    │     │  stations payload    │     │  PostgreSQL         │
 │  src/extract.py     │     │  src/transform.py    │     │  src/load.py        │
-└─────────────────────┘     └──────────────────────┘     └─────────────────────┘
+└─────────────────────┘     └──────────────────────┘     └──────────────┘
 ```
 
 Each ETL phase is isolated in its own module, making the pipeline independently testable and maintainable.
@@ -26,14 +26,19 @@ Each ETL phase is isolated in its own module, making the pipeline independently 
 |---|---|
 | Language | Python 3.x |
 | Transformation | Pandas |
-| DB Connectivity | SQLAlchemy / Psycopg |
+| DB Connectivity | SQLAlchemy / psycopg |
 | Data Store | Supabase (PostgreSQL) |
-| HTTP Client | Requests |
+| HTTP Client | requests |
 | Config | python-dotenv |
 
 ---
 
 ## ⚙️ Setup
+
+### Requisitos
+
+- Python 3.10+ (recomendado). Si usas pyenv: `pyenv install 3.10.12`.
+- pip, virtualenv o venv.
 
 ### 1. Clone the repository
 
@@ -57,21 +62,35 @@ pip install -r requirements.txt
 
 ### 4. Configure environment variables
 
-Create a `.env` file in the project root:
+Se ha añadido un archivo de ejemplo `.env.example` en la rama `docs/add-contributing-and-env`. Copialo a `.env` y rellena las credenciales necesarias.
 
 ```env
 DATABASE_URL="postgresql://user:password@host:port/database"
+BIZI_API_URL="https://www.zaragoza.es/some/endpoint?rf=json"
+# SUPABASE_URL and SUPABASE_KEY si procede
 ```
 
-> ⚠️ Never commit your `.env` file. It is already listed in `.gitignore`.
+> ⚠️ Nunca commits tu `.env`. Está incluido en `.gitignore`.
 
-### 5. Run the pipeline
+### 5. Ejecutar pipeline
 
 ```bash
 python main.py
 ```
 
-The console will log how many stations were processed and confirm the upsert into the database.
+La consola mostrará cuántas estaciones se procesaron y confirmará el upsert en la base de datos.
+
+---
+
+## ✅ Ejecutar tests
+
+Si añades o modificas lógica, por favor incluye tests. Para ejecutar los tests:
+
+```bash
+pytest
+```
+
+(Si no hay tests en la rama actual, se agradecen aportes en `tests/`).
 
 ---
 
@@ -81,39 +100,35 @@ The console will log how many stations were processed and confirm the upsert int
 mobility-zgz/
 │
 ├── src/
-│   ├── extract.py       # Connects to Zaragoza Open Data API
-│   ├── transform.py     # Cleans and normalizes the stations payload
-│   └── load.py          # Upserts data into PostgreSQL
+│   ├── extract.py       # Conecta con Zaragoza Open Data API
+│   ├── transform.py     # Limpia y normaliza el payload de estaciones
+│   └── load.py          # Upserts en PostgreSQL
 │
 ├── query/
-│   └── postgresql/
-│       └── create/
-│           └── bizi_stations/   # DDL scripts for table creation
+│   └── postgresql/      # DDL scripts para creación de tablas (nota: confirmar nombre de carpeta)
 │
-├── main.py              # Pipeline entrypoint
+├── main.py              # Entrypoint del pipeline
 ├── requirements.txt
 ├── pyproject.toml
-└── .env.example
+├── .env.example         # Ejemplo de variables de entorno (añadido)
+└── README.md
 ```
 
 ---
 
 ## 🔑 Key Engineering Decisions
 
-**Upsert over insert**
-Guarantees idempotency — safe to run on a schedule (e.g. via cron or Airflow) without duplicating records.
+**Upsert sobre insert** — Garantiza idempotencia: seguro para ejecutar periódicamente sin duplicar registros.
 
-**Modular ETL structure**
-Each phase (Extract, Transform, Load) lives in its own module. You can test, mock or replace any phase independently without touching the others.
+**Modular ETL** — Cada fase (Extract, Transform, Load) vive en su módulo propio. Permite pruebas unitarias y mocks.
 
-**Environment-based configuration**
-Database credentials are loaded from environment variables via `python-dotenv`. No secrets are hardcoded or committed to version control.
+**Configuración por entorno** — Credenciales cargadas desde variables de entorno con `python-dotenv`.
 
 ---
 
 ## 📡 Data Source
 
-Data is extracted in real time from the open infrastructure services of the **Ayuntamiento de Zaragoza**:
+Datos extraídos en tiempo real de los servicios de datos abiertos del **Ayuntamiento de Zaragoza**:
 
 [Open Data Portal — Zaragoza City Council](https://www.zaragoza.es/sede/portal/datos-abiertos/)
 
@@ -122,3 +137,9 @@ Data is extracted in real time from the open infrastructure services of the **Ay
 ## 📄 License
 
 This project is released under the [Unlicense](LICENSE) — public domain, no restrictions.
+
+---
+
+## Contributing
+
+Si vas a contribuir, revisa `CONTRIBUTING.md` en la raíz del repositorio para las pautas.
