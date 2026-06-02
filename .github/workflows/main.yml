@@ -2,8 +2,8 @@ name: Run Mobility Zgz ETL
 
 on:
   schedule:
-    # Ejecuta el pipeline cada 5 minutos (Formato Cron)
-    - cron: '*/5 * * * *'
+    # Ejecuta el pipeline cada hora (Formato Cron)
+    - cron: '0 * * * *'
   workflow_dispatch: # Permite ejecutar el pipeline manualmente desde la web de GitHub
 
 jobs:
