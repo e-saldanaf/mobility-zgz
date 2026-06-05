@@ -158,7 +158,7 @@ st.pydeck_chart(
         layers=[scatter_layer],
         initial_view_state=view_state,
         tooltip=tooltip,
-        map_style="mapbox://styles/mapbox/dark-v10",
+        map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
     ),
     use_container_width=True,
     height=520,
