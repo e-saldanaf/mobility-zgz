@@ -1,145 +1,130 @@
-# 🚲 Mobility Zaragoza — Bizi ETL Pipeline
+# 🚲 Mobility Zaragoza — Bizi Data Platform
 
-A Python ETL pipeline that ingests real-time data from the **Open Data API of Zaragoza City Council**, processes public bike-sharing station statuses (Bizi), and loads them into a PostgreSQL database.
-
----
-
-## 📐 Architecture
-
-```
-┌─────────────────────┐     ┌──────────────────────┐     ┌──────────────┐
-│       EXTRACT        │────▶│      TRANSFORM        │────▶│        LOAD          │
-│                     │     │                      │     │                     │
-│  Zaragoza Open Data │     │  Normalize & clean   │     │  Upsert into        │
-│  REST API (JSON)    │     │  stations payload    │     │  PostgreSQL         │
-│  src/extract.py     │     │  src/transform.py    │     │  src/load.py        │
-└─────────────────────┘     └──────────────────────┘     └──────────────┘
-```
-
-Each ETL phase is isolated in its own module, making the pipeline independently testable and maintainable.
+A two-component data platform built around the public bike-sharing network of Zaragoza (Bizi), using the city's Open Data API.
 
 ---
 
-## 🛠️ Stack
+## Architecture
+
+```
+Zaragoza Open Data API
+        │
+        ├──────────────────────────────────┐
+        │                                  │
+        ▼                                  ▼
+ [ ETL Pipeline ]                 [ Streamlit Dashboard ]
+ Python · SQLAlchemy               Real-time API call
+ Upsert → PostgreSQL               No DB dependency
+ Scheduled manually                Always fresh data
+```
+
+The platform has two independent components with intentionally separate data flows:
+
+- **ETL Pipeline** — extracts, transforms and loads station snapshots into PostgreSQL for historical analysis. Designed for scheduled execution (cron, Airflow).
+- **Streamlit Dashboard** — calls the Open Data API directly on each user request, bypassing the database entirely. This is a deliberate architectural decision: the free tier of GitHub Actions does not support frequent scheduled runs, so a live API call guarantees real-time data without depending on pipeline execution frequency.
+
+---
+
+## Components
+
+### 1. ETL Pipeline (`src/`)
+
+A Python ETL pipeline that ingests station data from the Zaragoza Open Data REST API, normalizes it with Pandas, and loads it into PostgreSQL using an idempotent upsert strategy.
+
+| Phase | Module | Responsibility |
+|---|---|---|
+| Extract | `src/extract.py` | Fetches JSON snapshot from the API |
+| Transform | `src/transform.py` | Normalizes fields, casts types, adds audit columns |
+| Load | `src/load.py` | Upserts into PostgreSQL via temp table + `ON CONFLICT` |
+
+**Run manually:**
+```bash
+python main.py
+```
+
+**Key engineering decisions:**
+- **Upsert over insert** — idempotent by design, safe to run repeatedly
+- **Modular structure** — each phase is independently testable
+- **Audit columns** — `created_at`, `modified_at`, `action` added at transform time
+
+---
+
+### 2. Live Dashboard (`dashboard/`)
+
+A Streamlit application that displays real-time Bizi station availability on an interactive map, with dual visualization modes and station-level detail.
+
+**Live app:** [bizi-zgz.streamlit.app](https://bizi-zgz.streamlit.app/)
+
+**Features:**
+- 🚲 / 🅿️ toggle — switch between "find a bike" and "find a dock" visualization modes
+- Color gradient — green → yellow → orange → red based on availability ratio
+- KPI metrics — total bikes, docks, active stations, critical stations
+- Sidebar filters — minimum availability, hide empty stations
+- Interactive map — Pydeck ScatterplotLayer with tooltip on hover
+- Station table — sorted by station number, with progress bar showing occupancy
+
+**Run locally:**
+```bash
+cd dashboard
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+**Why direct API calls instead of the database?**
+The GitHub Actions free tier limits scheduled workflow execution frequency, which would result in stale data in the database. Calling the Open Data API directly on each Streamlit request guarantees real-time accuracy without infrastructure cost. If a production-grade scheduled pipeline were available (e.g. Airflow on a dedicated server), the dashboard could be refactored to query the historical database and add time-series analysis.
+
+---
+
+## Stack
 
 | Layer | Technology |
 |---|---|
 | Language | Python 3.x |
 | Transformation | Pandas |
-| DB Connectivity | SQLAlchemy / psycopg |
+| DB Connectivity | SQLAlchemy / Psycopg |
 | Data Store | Supabase (PostgreSQL) |
-| HTTP Client | requests |
+| Dashboard | Streamlit + Pydeck |
+| HTTP Client | Requests |
 | Config | python-dotenv |
 
 ---
 
-## ⚙️ Setup
+## Setup
 
-### Requisitos
-
-- Python 3.10+ (recomendado). Si usas pyenv: `pyenv install 3.10.12`.
-- pip, virtualenv o venv.
-
-### 1. Clone the repository
+### ETL Pipeline
 
 ```bash
+# Clone
 git clone https://github.com/e-saldanaf/mobility-zgz.git
 cd mobility-zgz
-```
 
-### 2. Create and activate a virtual environment
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-```
-
-### 3. Install dependencies
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
-### 4. Configure environment variables
+# Configure environment
+cp .env.example .env
+# Edit .env with your DATABASE_URL
 
-Se ha añadido un archivo de ejemplo `.env.example` en la rama `docs/add-contributing-and-env`. Copialo a `.env` y rellena las credenciales necesarias.
-
-```env
-DATABASE_URL="postgresql://user:password@host:port/database"
-BIZI_API_URL="https://www.zaragoza.es/some/endpoint?rf=json"
-# SUPABASE_URL and SUPABASE_KEY si procede
-```
-
-> ⚠️ Nunca commits tu `.env`. Está incluido en `.gitignore`.
-
-### 5. Ejecutar pipeline
-
-```bash
+# Run
 python main.py
 ```
 
-La consola mostrará cuántas estaciones se procesaron y confirmará el upsert en la base de datos.
-
----
-
-## ✅ Ejecutar tests
-
-Si añades o modificas lógica, por favor incluye tests. Para ejecutar los tests:
+### Dashboard
 
 ```bash
-pytest
-```
-
-(Si no hay tests en la rama actual, se agradecen aportes en `tests/`).
-
----
-
-## 📁 Project Structure
-
-```
-mobility-zgz/
-│
-├── src/
-│   ├── extract.py       # Conecta con Zaragoza Open Data API
-│   ├── transform.py     # Limpia y normaliza el payload de estaciones
-│   └── load.py          # Upserts en PostgreSQL
-│
-├── query/
-│   └── postgresql/      # DDL scripts para creación de tablas (nota: confirmar nombre de carpeta)
-│
-├── main.py              # Entrypoint del pipeline
-├── requirements.txt
-├── pyproject.toml
-├── .env.example         # Ejemplo de variables de entorno (añadido)
-└── README.md
+cd dashboard
+pip install -r requirements.txt
+streamlit run app.py
 ```
 
 ---
 
-## 🔑 Key Engineering Decisions
+## Data Source
 
-**Upsert sobre insert** — Garantiza idempotencia: seguro para ejecutar periódicamente sin duplicar registros.
-
-**Modular ETL** — Cada fase (Extract, Transform, Load) vive en su módulo propio. Permite pruebas unitarias y mocks.
-
-**Configuración por entorno** — Credenciales cargadas desde variables de entorno con `python-dotenv`.
+[Open Data Portal — Ayuntamiento de Zaragoza](https://www.zaragoza.es/sede/portal/datos-abiertos/)
 
 ---
 
-## 📡 Data Source
+## License
 
-Datos extraídos en tiempo real de los servicios de datos abiertos del **Ayuntamiento de Zaragoza**:
-
-[Open Data Portal — Zaragoza City Council](https://www.zaragoza.es/sede/portal/datos-abiertos/)
-
----
-
-## 📄 License
-
-This project is released under the [Unlicense](LICENSE) — public domain, no restrictions.
-
----
-
-## Contributing
-
-Si vas a contribuir, revisa `CONTRIBUTING.md` en la raíz del repositorio para las pautas.
+Released under the [Unlicense](LICENSE) — public domain, no restrictions.
