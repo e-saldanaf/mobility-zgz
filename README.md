@@ -1,5 +1,9 @@
 # 🚲 Mobility Zaragoza — Bizi Data Platform
 
+![Python](https://img.shields.io/badge/Python-3.x-306998?logo=python)
+![Streamlit](https://img.shields.io/badge/Streamlit-Live-FF4B4B?logo=streamlit)
+![License](https://img.shields.io/badge/License-Unlicense-green)
+
 A two-component data platform built around the public bike-sharing network of Zaragoza (Bizi), using the city's Open Data API.
 
 ---
