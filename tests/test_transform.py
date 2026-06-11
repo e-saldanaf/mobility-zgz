@@ -26,7 +26,7 @@ def test_clean_data_success():
     
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 2
-    assert list(df.columns) == ['id', 'title', 'bikes', 'slots', 'api_updated_at', 'lon', 'lat', 'created_at', 'modified_at', 'action']
+    assert list(df.columns) == ['id', 'title', 'bikes', 'slots', 'api_updated_at', 'lon', 'lat', 'created_at', 'modified_at']
     assert df.iloc[0]['id'] == 1
     assert df.iloc[0]['bikes'] == 10
     assert df.iloc[1]['slots'] == 15

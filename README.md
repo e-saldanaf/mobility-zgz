@@ -49,7 +49,7 @@ python main.py
 **Key engineering decisions:**
 - **Upsert over insert** — idempotent by design, safe to run repeatedly
 - **Modular structure** — each phase is independently testable
-- **Audit columns** — `created_at`, `modified_at`, `action` added at transform time
+- **Audit columns** — `created_at`, `modified_at` added at transform time
 
 ---
 

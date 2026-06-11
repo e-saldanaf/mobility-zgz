@@ -18,7 +18,6 @@ CREATE TABLE public.bizi_stations (
 	lat float8 NULL,
 	created_at timestamptz NULL,
 	modified_at timestamptz NULL,
-	"action" text NULL,
 	CONSTRAINT bizi_stations_pkey PRIMARY KEY (id)
 );
 CREATE INDEX idx_bizi_modified ON public.bizi_stations USING btree (modified_at DESC);

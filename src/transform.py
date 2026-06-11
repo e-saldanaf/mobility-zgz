@@ -42,7 +42,7 @@ class BiziTransformer:
             now = datetime.now(timezone.utc)
             df['created_at'] = now
             df['modified_at'] = now
-            df['action'] = 'UPSERT'
+            
 
             logging.info(f"Transformation successful: {len(df)} rows processed by field names.")
             return df
