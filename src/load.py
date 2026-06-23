@@ -1,13 +1,23 @@
 from sqlalchemy import create_engine, text
 import pandas as pd
 import logging
+import os
 
 ALLOWED_TABLES = {"bizi_stations"}
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+QUERIES_DIR = os.path.join(BASE_DIR, "query", "postgresql", "upsert", "bizi_stations")
 
 
 class BiziLoader:
     def __init__(self, connection_uri: str):
         self.engine = create_engine(connection_uri)
+
+    @staticmethod
+    def _load_sql(filename: str) -> str:
+        path = os.path.join(QUERIES_DIR, filename)
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
 
     def upsert_data(self, df: pd.DataFrame, table_name: str) -> None:
         if df.empty:
@@ -29,17 +39,17 @@ class BiziLoader:
 
         with self.engine.begin() as connection:
             connection.execute(
-                text(f"CREATE TEMP TABLE {staging_table} (LIKE {table_name}) ON COMMIT DROP")
+                text(self._load_sql("create_temp_table.sql").format(staging_table=staging_table, table_name=table_name))
             )
             df.to_sql(staging_table, con=connection, if_exists="append", index=False)
 
-            upsert_query = text(f"""
-                INSERT INTO {table_name} ({col_list})
-                SELECT {col_list} FROM {staging_table}
-                ON CONFLICT (id) DO UPDATE SET {set_clause}
-                RETURNING (xmax = 0) AS inserted;
-            """)
-            results = connection.execute(upsert_query).fetchall()
+            upsert_query = self._load_sql("upsert.sql").format(
+                table_name=table_name,
+                col_list=col_list,
+                set_clause=set_clause,
+                staging_table=staging_table,
+            )
+            results = connection.execute(text(upsert_query)).fetchall()
 
         inserted = sum(1 for row in results if row.inserted)
         updated = len(results) - inserted
